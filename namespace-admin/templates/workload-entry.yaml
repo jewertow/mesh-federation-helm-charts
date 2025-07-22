@@ -15,7 +15,7 @@
 {{- $_ := set $allHostnames $import.hostname true }}
 {{- end }}
 
-{{/* Create ServiceEntry for each unique hostname */}}
+{{/* Create WorkloadEntries for imported services */}}
 {{- range $hostname, $_ := $allHostnames }}
 {{- $export := index $exportMap $hostname }}
 {{- $import := index $importMap $hostname }}
@@ -25,33 +25,40 @@
 {{- else }}
 {{- $ports = $import.ports | default $.Values.global.defaultServicePorts }}
 {{- end }}
+{{- if $import }}
+{{- range $mesh := $.Values.global.remote }}
+{{- if has $hostname $mesh.importedServices }}
+{{- range $addrIdx, $addr := $mesh.addresses }}
 apiVersion: networking.istio.io/v1
-kind: ServiceEntry
+kind: WorkloadEntry
 metadata:
-  name: {{ printf "%s" $hostname | replace "." "-" | trunc 253 }}
+  name: {{ printf "%s-%s-%d" ($hostname | replace "." "-" | trunc 230) ($mesh.network | replace "." "-" | trunc 10) $addrIdx }}
   namespace: {{ $.Release.Namespace }}
 spec:
-  hosts:
-  - {{ $hostname }}
-  location: MESH_INTERNAL
+  {{- if not $.Values.global.useGatewayAPI }}
+  address: {{ $addr }}
+  {{- end }}
   ports:
   {{- range $port := $ports }}
-  - number: {{ $port.number }}
-    name: {{ $port.name }}
-    protocol: {{ $port.protocol }}
-    {{- if and $export $port.targetPort }}
-    targetPort: {{ $port.targetPort }}
-    {{- end }}
+    {{ $port.name }}: {{ $port.number }}
   {{- end }}
-  resolution: STATIC
-  workloadSelector:
-    labels:
-      {{- if $export }}
-      {{- with $export.labelSelector }}
-      {{- toYaml . | nindent 6 }}
-      {{- end }}
-      {{- else }}
-      hostname: {{ $hostname | replace "." "-" }}
-      {{- end }}
+  network: {{ $mesh.network }}
+  {{- if $mesh.locality }}
+  locality: {{ $mesh.locality }}
+  {{- end }}
+  labels:
+    {{- if $export }}
+    {{- with $export.labelSelector }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+    {{- else }}
+    hostname: {{ $hostname | replace "." "-" }}
+    {{- end }}
+    security.istio.io/tlsMode: istio
+    topology.istio.io/cluster: {{ $mesh.mesh }}
 ---
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}
 {{- end }}

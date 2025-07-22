@@ -34,18 +34,6 @@ kind: WorkloadEntry
 metadata:
   name: {{ printf "%s-%s-%d" ($hostname | replace "." "-" | trunc 230) ($mesh.network | replace "." "-" | trunc 10) $addrIdx }}
   namespace: {{ $.Release.Namespace }}
-spec:
-  {{- if not $.Values.global.useGatewayAPI }}
-  address: {{ $addr }}
-  {{- end }}
-  ports:
-  {{- range $port := $ports }}
-    {{ $port.name }}: {{ $port.number }}
-  {{- end }}
-  network: {{ $mesh.network }}
-  {{- if $mesh.locality }}
-  locality: {{ $mesh.locality }}
-  {{- end }}
   labels:
     {{- if $export }}
     {{- with $export.labelSelector }}
@@ -56,6 +44,18 @@ spec:
     {{- end }}
     security.istio.io/tlsMode: istio
     topology.istio.io/cluster: {{ $mesh.mesh }}
+spec:
+  network: {{ $mesh.network }}
+  {{- if not $.Values.global.enableGatewayAPI }}
+  address: {{ $addr }}
+  {{- end }}
+{{/*  ports:*/}}
+{{/*  {{- range $port := $ports }}*/}}
+{{/*    {{ $port.name }}: {{ $port.number }}*/}}
+{{/*  {{- end }}*/}}
+  {{- if $mesh.locality }}
+  locality: {{ $mesh.locality }}
+  {{- end }}
 ---
 {{- end }}
 {{- end }}

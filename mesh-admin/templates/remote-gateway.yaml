@@ -1,4 +1,4 @@
-{{- if .Values.global.useGatewayAPI }}
+{{- if .Values.global.enableGatewayAPI }}
 {{- $remotes := .Values.global.remote | default list }}
 {{- range $mesh := $remotes }}
 {{- if or $mesh.addresses $.Values.global.egressGateway.enabled }}
@@ -23,7 +23,7 @@ spec:
   {{- end }}
   listeners:
   - name: cross-network
-    port: {{ $mesh.port | default 15443 }}
+    port: {{ if $.Values.global.egressGateway.enabled }}{{ $.Values.global.egressGateway.port }}{{ else }}{{ $mesh.port | default 15443 }}{{ end }}
     protocol: TLS
     tls:
       mode: Passthrough

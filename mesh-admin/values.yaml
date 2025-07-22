@@ -1,7 +1,7 @@
 global:
   configNamespace: istio-system
   useOpenshiftRouter: false       # Set to true if remote meshes use OpenShift router for ingress
-  useGatewayAPI: false            # Set to true to use Kubernetes Gateway API to discover remote endpoints
+  enableGatewayAPI: false            # Set to true to use Kubernetes Gateway API to discover remote endpoints
   egressGateway:
     enabled: false
     service:

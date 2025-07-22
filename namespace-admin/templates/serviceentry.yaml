@@ -1,105 +1,68 @@
-{{/* Build list of exported hostnames to check for conflicts */}}
-{{- $exportedHostnames := list }}
+{{/* Build maps of all hostnames for processing */}}
+{{- $allHostnames := dict }}
+{{- $exportMap := dict }}
+{{- $importMap := dict }}
+
+{{/* Build export map */}}
 {{- range $export := .Values.export }}
-{{- $exportedHostnames = append $exportedHostnames $export.hostname }}
+{{- $_ := set $exportMap $export.hostname $export }}
+{{- $_ := set $allHostnames $export.hostname true }}
 {{- end }}
 
-{{- range $idx, $svc := .Values.import }}
-{{- $hostname := required (printf "import[%d].hostname is required" $idx) $svc.hostname }}
-{{- $resName := printf "import-%s" (replace $hostname "." "-" ) }}
-{{/* Only create import service entry if hostname is not being exported */}}
-{{- if not (has $hostname $exportedHostnames) }}
-apiVersion: networking.istio.io/v1alpha3
-kind: ServiceEntry
-metadata:
-  name: import-{{ printf "%s" $svc.hostname | replace "." "-" | trunc 253 }}
-  namespace: {{ $.Release.Namespace }}
-spec:
-  exportTo:
-  - "."
-  hosts:
-  - {{ $hostname }}
-  ports:
-  {{- $ports := $svc.ports | default $.Values.global.defaultServicePorts }}
-  {{- range $port := $ports }}
-  - number: {{ $port.number }}
-    name: {{ $port.name }}
-    protocol: {{ $port.protocol }}
-  {{- end }}
-  location: MESH_INTERNAL
-  resolution: DNS
-  endpoints:
-  {{- if $.Values.global.egressGateway.enabled }}
-  - address: {{ $.Values.global.egressGateway.service.name }}.{{ $.Values.global.egressGateway.service.namespace }}.svc.cluster.local
-    ports:
-    {{- range $port := $ports }}
-      {{ $port.name }}: {{ $.Values.global.egressGateway.port }}
-    {{- end }}
-  {{- else }}
-  {{- range $mesh := $.Values.global.remote }}
-  {{- if has $hostname $mesh.importedServices }}
-  {{- range $addr := $mesh.addresses }}
-  - address: {{ $addr }}
-    ports:
-    {{- range $port := $ports }}
-      {{ $port.name }}: {{ $mesh.port }}
-    {{- end }}
-    network: {{ $mesh.network }}
-    {{- if $mesh.locality }}
-    locality: {{ $mesh.locality }}
-    {{- end }}
-    labels:
-      security.istio.io/tlsMode: istio
-      topology.istio.io/cluster: {{ $mesh.mesh }}
-  {{- end }}
-  {{- end }}
-  {{- end }}
-  {{- end }}
----
-{{- end }}
-{{- end }}
-{{/* Build list of imported hostnames to check for conflicts */}}
-{{- $importedHostnames := list }}
+{{/* Build import map */}}
 {{- range $import := .Values.import }}
-{{- $importedHostnames = append $importedHostnames $import.hostname }}
+{{- $_ := set $importMap $import.hostname $import }}
+{{- $_ := set $allHostnames $import.hostname true }}
 {{- end }}
 
-{{- range $export := .Values.export }}
+{{/* Create ServiceEntry for each unique hostname */}}
+{{- range $hostname, $_ := $allHostnames }}
+{{- $export := index $exportMap $hostname }}
+{{- $import := index $importMap $hostname }}
+{{- $ports := dict }}
+{{- if $export }}
+{{- $ports = $export.ports | default $.Values.global.defaultServicePorts }}
+{{- else }}
+{{- $ports = $import.ports | default $.Values.global.defaultServicePorts }}
+{{- end }}
 apiVersion: networking.istio.io/v1
 kind: ServiceEntry
 metadata:
-  name: export-{{ printf "%s" $export.hostname | replace "." "-" | trunc 253 }}
+  name: {{ printf "%s" $hostname | replace "." "-" | trunc 253 }}
   namespace: {{ $.Release.Namespace }}
 spec:
   hosts:
-  - {{ $export.hostname }}
+  - {{ $hostname }}
   location: MESH_INTERNAL
   ports:
-  {{- $ports := $export.ports | default $.Values.global.defaultServicePorts }}
   {{- range $port := $ports }}
   - number: {{ $port.number }}
     name: {{ $port.name }}
     protocol: {{ $port.protocol }}
-    {{- if $port.targetPort }}
+    {{- if and $export $port.targetPort }}
     targetPort: {{ $port.targetPort }}
     {{- end }}
   {{- end }}
   resolution: STATIC
   workloadSelector:
     labels:
+      {{- if $export }}
       {{- with $export.labelSelector }}
       {{- toYaml . | nindent 6 }}
       {{- end }}
+      {{- else }}
+      hostname: {{ $hostname | replace "." "-" }}
+      {{- end }}
 ---
-{{/* If hostname is both exported and imported, create WorkloadEntry for each remote network */}}
-{{- if has $export.hostname $importedHostnames }}
+{{/* Create WorkloadEntries for imported services */}}
+{{- if $import }}
 {{- range $mesh := $.Values.global.remote }}
-{{- if has $export.hostname $mesh.importedServices }}
+{{- if has $hostname $mesh.importedServices }}
 {{- range $addrIdx, $addr := $mesh.addresses }}
 apiVersion: networking.istio.io/v1
 kind: WorkloadEntry
 metadata:
-  name: {{ printf "%s-%s-%d" ($export.hostname | replace "." "-" | trunc 230) ($mesh.network | replace "." "-" | trunc 10) $addrIdx }}
+  name: {{ printf "%s-%s-%d" ($hostname | replace "." "-" | trunc 230) ($mesh.network | replace "." "-" | trunc 10) $addrIdx }}
   namespace: {{ $.Release.Namespace }}
 spec:
   {{- if not $.Values.global.useGatewayAPI }}
@@ -114,8 +77,12 @@ spec:
   locality: {{ $mesh.locality }}
   {{- end }}
   labels:
+    {{- if $export }}
     {{- with $export.labelSelector }}
     {{- toYaml . | nindent 4 }}
+    {{- end }}
+    {{- else }}
+    hostname: {{ $hostname | replace "." "-" }}
     {{- end }}
     security.istio.io/tlsMode: istio
     topology.istio.io/cluster: {{ $mesh.mesh }}

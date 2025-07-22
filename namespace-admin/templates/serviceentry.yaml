@@ -1,6 +1,14 @@
+{{/* Build list of exported hostnames to check for conflicts */}}
+{{- $exportedHostnames := list }}
+{{- range $export := .Values.export }}
+{{- $exportedHostnames = append $exportedHostnames $export.hostname }}
+{{- end }}
+
 {{- range $idx, $svc := .Values.import }}
 {{- $hostname := required (printf "import[%d].hostname is required" $idx) $svc.hostname }}
 {{- $resName := printf "import-%s" (replace $hostname "." "-" ) }}
+{{/* Only create import service entry if hostname is not being exported */}}
+{{- if not (has $hostname $exportedHostnames) }}
 apiVersion: networking.istio.io/v1alpha3
 kind: ServiceEntry
 metadata:
@@ -48,6 +56,7 @@ spec:
   {{- end }}
   {{- end }}
 ---
+{{- end }}
 {{- end }}
 {{- range $export := .Values.export }}
 apiVersion: networking.istio.io/v1

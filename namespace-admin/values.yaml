@@ -1,0 +1,27 @@
+global:
+  configNamespace: istio-system
+  useOpenshiftRouter: false       # Set to true if remote meshes use OpenShift router for ingress
+  egressGateway:
+    enabled: false
+    service:
+      name: istio-egressgateway
+      namespace: istio-system
+    port: 443
+  # Remote meshes configuration - inherited from mesh-admin
+  remote: []
+
+import: []
+#- hostname: payments.mesh.global
+#  ports:
+#  - number: 80
+#    name: http
+#    protocol: HTTP
+
+export: []
+#- hostname: payments.mesh.global
+#  ports:
+#  - number: 443
+#    name: https
+#    protocol: HTTPS
+#  labelSelector:
+#    app: search

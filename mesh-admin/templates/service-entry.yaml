@@ -2,11 +2,45 @@
 {{- $remotes := .Values.global.remote | default list }}
 {{- if gt (len $remotes) 0 }}
 {{- range $meshIdx, $mesh := $remotes }}
+{{- if .Values.global.enableGatewayAPI }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: ingress-{{ $mesh.mesh }}
+  namespace: {{ $.Release.Namespace }}
+spec:
+  clusterIP: None
+  ports:
+  - port: {{ $mesh.port }}
+    name: auto-passthrough-tls
+    protocol: TCP
+  selector: {}
+---
+apiVersion: discovery.k8s.io/v1
+kind: EndpointSlice
+metadata:
+  name: ingress-{{ $mesh.mesh }}
+  namespace: {{ $.Release.Namespace }}
+  labels:
+    kubernetes.io/service-name: ingress-{{ $mesh.mesh }}
+addressType: IPv4
+ports:
+- name: auto-passthrough-tls
+  port: {{ $mesh.port }}
+  protocol: TCP
+endpoints:
+{{- range $addr := $mesh.addresses }}
+- addresses:
+  - {{ $addr }}
+  zone: {{ $mesh.locality | default "unknown" }}
+{{- end }}
+---
+{{- else }}
 apiVersion: networking.istio.io/v1beta1
 kind: ServiceEntry
 metadata:
   name: ingress-{{ $mesh.mesh }}
-  namespace: {{ $.Values.global.configNamespace }}
+  namespace: {{ $.Release.Namespace }}
 spec:
   exportTo:
   - "."
@@ -30,6 +64,7 @@ spec:
     {{- end }}
   {{- end }}
 ---
+{{- end }}
 {{- end }}
 {{- end }}
 {{- end }}

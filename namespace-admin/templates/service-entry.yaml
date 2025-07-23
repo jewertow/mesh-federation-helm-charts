@@ -39,7 +39,7 @@ spec:
   - number: {{ $port.number }}
     name: {{ $port.name }}
     protocol: {{ $port.protocol }}
-    {{- if and $export $port.targetPort }}
+    {{- if $port.targetPort }}
     targetPort: {{ $port.targetPort }}
     {{- end }}
   {{- end }}

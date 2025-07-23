@@ -42,7 +42,11 @@ spec:
     {{- range $mesh := $remotes }}
     {{- if eq $mesh.mesh $meshName }}
     - destination:
+        {{- if $.Values.global.enableGatewayAPI }}
+        host: ingress-{{ $meshName }}.{{ $.Release.Namespace }}.svc.cluster.local
+        {{- else }}
         host: ingress.{{ $meshName }}.global
+        {{- end }}
         port:
           number: {{ $mesh.port }}
       weight: {{ $weight }}

@@ -126,5 +126,5 @@ keast exec -n sleep deploy/sleep -c sleep -- curl -v httpbin.mesh.global:8000/he
 1. Export local httpbin:
 ```shell
 WEST_INGRESS_IP=$(kwest get svc federation-ingress-gateway -n istio-system -o jsonpath='{.status.loadBalancer.ingress[].ip}')
-helm-east install import-httpbin ../../namespace-admin -n httpbin -f east-mesh-admin-values.yaml -f east-ns-import-and-export-admin-values.yaml --set "global.remote[0].addresses[0]=$WEST_INGRESS_IP"
+helm-east upgrade --install import-httpbin ../../namespace-admin -n httpbin -f east-mesh-admin-values.yaml -f east-ns-import-and-export-admin-values.yaml --set "global.remote[0].addresses[0]=$WEST_INGRESS_IP"
 ```

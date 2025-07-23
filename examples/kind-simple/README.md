@@ -117,3 +117,14 @@ WEST_INGRESS_IP=$(kwest get svc federation-ingress-gateway -n istio-system -o js
 helm-east install mesh-federation ../../mesh-admin -n istio-system -f east-mesh-admin-values.yaml --set "global.remote[0].addresses[0]=$WEST_INGRESS_IP"
 helm-east install import-httpbin ../../namespace-admin -n httpbin -f east-mesh-admin-values.yaml -f east-ns-admin-values.yaml --set "global.remote[0].addresses[0]=$WEST_INGRESS_IP"
 ```
+
+1. Test connectivity:
+```shell
+keast exec -n sleep deploy/sleep -c sleep -- curl -v httpbin.mesh.global:8000/headers
+```
+
+1. Export local httpbin:
+```shell
+WEST_INGRESS_IP=$(kwest get svc federation-ingress-gateway -n istio-system -o jsonpath='{.status.loadBalancer.ingress[].ip}')
+helm-east install import-httpbin ../../namespace-admin -n httpbin -f east-mesh-admin-values.yaml -f east-ns-import-and-export-admin-values.yaml --set "global.remote[0].addresses[0]=$WEST_INGRESS_IP"
+```

@@ -42,7 +42,9 @@ spec:
     {{- range $mesh := $remotes }}
     {{- if eq $mesh.mesh $meshName }}
     - destination:
-        {{- if $.Values.global.enableGatewayAPI }}
+        {{- $firstAddr := index $mesh.addresses 0 }}
+        {{- $isIPAddress := regexMatch "^[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}$" $firstAddr }}
+        {{- if $isIPAddress }}
         host: ingress-{{ $meshName }}.{{ $.Release.Namespace }}.svc.cluster.local
         {{- else }}
         host: ingress.{{ $meshName }}.global

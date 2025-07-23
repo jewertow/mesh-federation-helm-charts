@@ -2,7 +2,7 @@
 {{- $remotes := .Values.global.remote | default list }}
 {{- if gt (len $remotes) 0 }}
 {{- range $meshIdx, $mesh := $remotes }}
-{{- if .Values.global.enableGatewayAPI }}
+{{- if $.Values.global.enableGatewayAPI }}
 apiVersion: v1
 kind: Service
 metadata:

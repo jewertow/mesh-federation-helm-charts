@@ -44,7 +44,7 @@ apiVersion: networking.istio.io/v1beta1
 kind: Gateway
 metadata:
   name: federation-egress-gateway
-  namespace: {{ .Values.global.configNamespace }}
+  namespace: {{ .Release.Namespace }}
 spec:
   selector:
     {{- range $k, $v := .Values.global.egressGateway.selector }}

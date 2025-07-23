@@ -1,0 +1,7 @@
+import:
+- hostname: httpbin.mesh.global
+  ports:
+  - name: http
+    protocol: HTTP
+    number: 8000
+    targetPort: 80

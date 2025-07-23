@@ -1,0 +1,7 @@
+service:
+  ports:
+  - name: tls-passthrough
+    port: 15443
+    targetPort: 15443
+  env:
+    ISTIO_META_REQUESTED_NETWORK_VIEW: west-network

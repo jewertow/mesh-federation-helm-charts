@@ -85,9 +85,6 @@ kwest apply -f mtls.yaml -n istio-system
 keast create namespace sleep
 keast label namespace sleep istio-injection=enabled
 keast apply -f https://raw.githubusercontent.com/istio/istio/release-1.20/samples/sleep/sleep.yaml -n sleep
-kwest create namespace sleep
-kwest label namespace sleep istio-injection=enabled
-kwest apply -f https://raw.githubusercontent.com/istio/istio/release-1.20/samples/sleep/sleep.yaml -n sleep
 # httpbin
 keast create namespace httpbin
 keast label namespace httpbin istio-injection=enabled

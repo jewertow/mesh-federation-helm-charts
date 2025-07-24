@@ -3,9 +3,6 @@ global:
   - number: 9080
     name: http
     protocol: HTTP
-  gateways:
-    egress:
-      enabled: true
   enableGatewayAPI: true
   remote:
   - mesh: west-mesh

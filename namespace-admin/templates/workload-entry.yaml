@@ -49,10 +49,6 @@ spec:
   {{- if not $.Values.global.enableGatewayAPI }}
   address: {{ $addr }}
   {{- end }}
-{{/*  ports:*/}}
-{{/*  {{- range $port := $ports }}*/}}
-{{/*    {{ $port.name }}: {{ $port.number }}*/}}
-{{/*  {{- end }}*/}}
   {{- if $mesh.locality }}
   locality: {{ $mesh.locality }}
   {{- end }}

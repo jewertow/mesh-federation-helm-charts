@@ -3,15 +3,13 @@ global:
   - number: 9080
     name: http
     protocol: HTTP
-  egressGateway:
-    enabled: true
-    selector:
-      app: istio-egressgateway
+  gateways:
+    egress:
+      enabled: true
   enableGatewayAPI: true
   remote:
   - mesh: west-mesh
     addresses: []
-    port: 15443
     network: west-network
     importedServices:
     - httpbin.mesh.global

@@ -97,22 +97,22 @@ kwest apply -f https://raw.githubusercontent.com/istio/istio/release-1.20/sample
 1. Deploy federation-ingress-gateway in the west cluster and egress gateway in the east cluster:
 
 ```shell
-helm-west upgrade --install federation-ingress-gateway istio/gateway -n istio-system --version 1.26.2 -f west-federation-ingress-gateway-values.yaml
-helm-east install istio-egressgateway istio/gateway -n istio-system --version 1.26.2 --set service.type=ClusterIP
+helm-west install istio-eastwestgateway istio/gateway -n istio-system --version 1.26.2 -f west/ingress-gateway-values.yaml
+helm-east install istio-egressgateway istio/gateway -n istio-system --version 1.26.2 -f east/egress-gateway-values.yaml
 ```
 
 1. Export httpbin from west cluster:
 
 ```shell
-helm-west install mesh-federation ../../mesh-admin -n istio-system -f west-mesh-admin-values.yaml
-helm-west install export-httpbin ../../namespace-admin -n httpbin -f west-mesh-admin-values.yaml -f west-ns-admin-values.yaml
+helm-west install mesh-federation ../../mesh-admin -n istio-system -f west/mesh-admin-values.yaml
+helm-west install export-httpbin ../../namespace-admin -n httpbin -f west/mesh-admin-values.yaml -f west/ns-admin-values.yaml
 ```
 
 1. Import httpbin to the east cluster:
 ```shell
-WEST_INGRESS_IP=$(kwest get svc federation-ingress-gateway -n istio-system -o jsonpath='{.status.loadBalancer.ingress[].ip}')
-helm-east install mesh-federation ../../mesh-admin -n istio-system -f east-mesh-admin-values.yaml --set "global.remote[0].addresses[0]=$WEST_INGRESS_IP"
-helm-east install import-httpbin ../../namespace-admin -n httpbin -f east-mesh-admin-values.yaml -f east-ns-admin-values.yaml --set "global.remote[0].addresses[0]=$WEST_INGRESS_IP"
+WEST_INGRESS_IP=$(kwest get svc istio-eastwestgateway -n istio-system -o jsonpath='{.status.loadBalancer.ingress[].ip}')
+helm-east upgrade --install mesh-federation ../../mesh-admin -n istio-system -f east/mesh-admin-values.yaml --set "global.remote[0].addresses[0]=$WEST_INGRESS_IP"
+helm-east upgrade --install import-httpbin ../../namespace-admin -n httpbin -f east/mesh-admin-values.yaml -f east/ns-admin-values.yaml --set "global.remote[0].addresses[0]=$WEST_INGRESS_IP"
 ```
 
 1. Test connectivity:
@@ -123,5 +123,5 @@ keast exec -n sleep deploy/sleep -c sleep -- curl -v httpbin.mesh.global:8000/he
 1. Export local httpbin:
 ```shell
 WEST_INGRESS_IP=$(kwest get svc federation-ingress-gateway -n istio-system -o jsonpath='{.status.loadBalancer.ingress[].ip}')
-helm-east upgrade --install import-httpbin ../../namespace-admin -n httpbin -f east-mesh-admin-values.yaml -f east-ns-import-and-export-admin-values.yaml --set "global.remote[0].addresses[0]=$WEST_INGRESS_IP"
+helm-east upgrade --install import-httpbin ../../namespace-admin -n httpbin -f east/mesh-admin-values.yaml -f east/ns-admin-import-and-export-values.yaml --set "global.remote[0].addresses[0]=$WEST_INGRESS_IP"
 ```

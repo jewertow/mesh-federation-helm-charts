@@ -1,4 +1,4 @@
-{{- if .Values.global.egressGateway.enabled }}
+{{- if .Values.global.gateways.egress.enabled }}
 {{- $remotes := .Values.global.remote | default list }}
 {{- if gt (len $remotes) 0 }}
 {{- range $meshIdx, $mesh := $remotes }}
@@ -15,7 +15,7 @@ spec:
   hosts:
   - ingress.{{ $mesh.mesh }}.global
   ports:
-  - number: {{ $mesh.port }}
+  - number: {{ $mesh.port | default 15443 }}
     name: auto-passthrough-tls
     protocol: TLS
   {{- if $isIPAddress }}
@@ -27,9 +27,9 @@ spec:
   endpoints:
   {{- range $addr := $mesh.addresses }}
   - address: {{ $addr }}
-    ports:
-      auto-passthrough-tls: {{ $mesh.port }}
+    {{- if not $.Values.global.enableGatewayAPI }}
     network: {{ $mesh.network }}
+    {{- end }}
     {{- if $mesh.locality }}
     locality: {{ $mesh.locality }}
     {{- end }}

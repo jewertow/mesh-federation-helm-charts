@@ -4,41 +4,6 @@
 {{- range $meshIdx, $mesh := $remotes }}
 {{- $firstAddr := index $mesh.addresses 0 }}
 {{- $isIPAddress := regexMatch "^[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}$" $firstAddr }}
-{{- if and $.Values.global.enableGatewayAPI $isIPAddress }}
-apiVersion: v1
-kind: Service
-metadata:
-  name: ingress-{{ $mesh.mesh }}
-  namespace: {{ $.Release.Namespace }}
-spec:
-  clusterIP: None
-  ports:
-  - port: {{ $mesh.port }}
-    name: auto-passthrough-tls
-    protocol: TCP
-  selector: {}
----
-apiVersion: discovery.k8s.io/v1
-kind: EndpointSlice
-metadata:
-  name: ingress-{{ $mesh.mesh }}
-  namespace: {{ $.Release.Namespace }}
-  labels:
-    kubernetes.io/service-name: ingress-{{ $mesh.mesh }}
-addressType: IPv4
-ports:
-- name: auto-passthrough-tls
-  port: {{ $mesh.port }}
-  protocol: TCP
-endpoints:
-{{- range $addr := $mesh.addresses }}
-- addresses:
-  - {{ $addr }}
-  zone: {{ $mesh.locality | default "unknown" }}
-{{- end }}
----
-{{- else }}
-{{/* Create ServiceEntry when Gateway API is not enabled */}}
 apiVersion: networking.istio.io/v1beta1
 kind: ServiceEntry
 metadata:
@@ -53,7 +18,11 @@ spec:
   - number: {{ $mesh.port }}
     name: auto-passthrough-tls
     protocol: TLS
+  {{- if $isIPAddress }}
+  resolution: STATIC
+  {{- else }}
   resolution: DNS
+  {{- end }}
   location: MESH_INTERNAL
   endpoints:
   {{- range $addr := $mesh.addresses }}
@@ -66,7 +35,6 @@ spec:
     {{- end }}
   {{- end }}
 ---
-{{- end }}
 {{- end }}
 {{- end }}
 {{- end }}

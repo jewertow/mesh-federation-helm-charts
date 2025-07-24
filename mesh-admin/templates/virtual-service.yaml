@@ -28,7 +28,7 @@ spec:
   tls:
   - match:
     - sniHosts:
-    {{- if $.Values.global.useOpenshiftRouter }}
+    {{- if $.Values.global.enableOpenshiftRouter }}
       {{- $ports := $.Values.global.defaultServicePorts | default list }}
       {{- range $port := $ports }}
       {{- $sni := include "hostname.withPort" (dict "hostname" $svc "port" $port.number) }}

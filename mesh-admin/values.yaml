@@ -1,12 +1,15 @@
 global:
   configNamespace: istio-system
-  useOpenshiftRouter: false       # Set to true if remote meshes use OpenShift router for ingress
-  enableGatewayAPI: false            # Set to true to use Kubernetes Gateway API to discover remote endpoints
+  # Set to true if all meshes use OpenShift router for ingress
+  enableOpenshiftRouter: false
+  # Set to true to use Kubernetes Gateway API to discover remote endpoints
+  enableGatewayAPI: false
   egressGateway:
     enabled: false
     service:
       name: istio-egressgateway
       namespace: istio-system
+    # IMPORTANT: When Gateway API is enabled, the egress gateway port must match the remote ingress port.
     port: 443
   # Remote meshes configuration - defines available remote meshes and their services
   remote: []
@@ -17,14 +20,22 @@ global:
 #  local:
 #    export:
 #    - hostname: search.mesh.global
+#      # Ports must be set only if OpenShift Router is enabled and default ports are not defined.
 #      ports: [8000, 9000]
 #  remote:
+#    # Name of the mesh must be unique
 #  - mesh: east-mesh
+#    # Required
+#    # Name of the remote network must be unique
+#    network: east-network
+#    # Addresses can be either IPs or DNS names, but different address types can't be used together.
 #    addresses:
 #    - 1.1.1.1
 #    - 2.2.2.2
+#    # Optional
 #    port: 15443
-#    network: east-network
+#    # Optional
 #    locality: us-east1
+#    # List of services allowed to import
 #    importedServices:
 #    - foo.mesh.global

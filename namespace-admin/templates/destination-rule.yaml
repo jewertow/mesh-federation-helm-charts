@@ -1,4 +1,4 @@
-{{- if .Values.global.useOpenshiftRouter }}
+{{- if .Values.global.enableOpenshiftRouter }}
 {{- range $idx, $svc := .Values.import }}
 {{- $hostname := required (printf "import[%d].hostname is required" $idx) $svc.hostname }}
 {{- $ports := $svc.ports | default $.Values.global.defaultServicePorts }}

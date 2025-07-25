@@ -104,6 +104,11 @@ istioctl-cent install -y -f istio.yaml \
   --set values.global.network=central-network \
   --set values.global.multiCluster.clusterName=central-cluster
 ```
+```shell
+keast apply -f mtls.yaml -n istio-system
+kwest apply -f mtls.yaml -n istio-system
+kcent apply -f mtls.yaml -n istio-system
+```
 
 ### East cluster
 
@@ -116,16 +121,15 @@ istioctl-cent install -y -f istio.yaml \
    keast apply -n east-apps -l app=ratings -f https://raw.githubusercontent.com/istio/istio/refs/heads/release-1.26/samples/bookinfo/platform/kube/bookinfo.yaml
    ```
    ```shell
-   cat <<EOF > east/federation-ingress-gateway-values.yaml
+   cat <<EOF > east/istio-eastwestgateway-values.yaml
    service:
      ports:
-     - name: tls-passthrough
+     - name: cross-network-tls
        port: 15443
-       targetPort: 15443
    env:
      ISTIO_META_REQUESTED_NETWORK_VIEW: east-network
    EOF
-   helm-east upgrade --install federation-ingress-gateway istio/gateway -n istio-system --version 1.26.2 -f east/federation-ingress-gateway-values.yaml
+   helm-east upgrade --install istio-eastwestgateway istio/gateway -n istio-system --version 1.26.2 -f east/istio-eastwestgateway-values.yaml
    ```
    ```shell
    cat <<EOF > east/mesh-admin-values.yaml
@@ -164,16 +168,15 @@ istioctl-cent install -y -f istio.yaml \
    kwest apply -n west-apps -l app=ratings -f https://raw.githubusercontent.com/istio/istio/refs/heads/release-1.26/samples/bookinfo/platform/kube/bookinfo.yaml
    ```
    ```shell
-   cat <<EOF > west/federation-ingress-gateway-values.yaml
+   cat <<EOF > west/istio-eastwestgateway-values.yaml
    service:
      ports:
-     - name: tls-passthrough
+     - name: cross-network-tls
        port: 15443
-       targetPort: 15443
    env:
      ISTIO_META_REQUESTED_NETWORK_VIEW: west-network
    EOF
-   helm-west upgrade --install federation-ingress-gateway istio/gateway -n istio-system --version 1.26.2 -f west/federation-ingress-gateway-values.yaml
+   helm-west upgrade --install istio-eastwestgateway istio/gateway -n istio-system --version 1.26.2 -f west/istio-eastwestgateway-values.yaml
    ```
    ```shell
    cat <<EOF > west/mesh-admin-values.yaml
@@ -210,8 +213,15 @@ This cluster will import services from east and west clusters.
 1. Deploy ingress and egress gateways:
 
    ```shell
-   helm-cent install istio-egressgateway istio/gateway -n istio-system --version 1.26.2 --set service.type=ClusterIP
-   helm-cent install istio-ingressgateway istio/gateway -n istio-system --version 1.26.2
+   cat <<EOF > central/istio-egressgateway-values.yaml
+   service:
+     type: ClusterIP
+     ports:
+     - name: cross-network-tls
+       port: 15443
+   EOF
+   helm-cent upgrade --install istio-egressgateway istio/gateway -n istio-system --version 1.26.2 -f central/istio-egressgateway-values.yaml
+   helm-cent upgrade --install istio-ingressgateway istio/gateway -n istio-system --version 1.26.2
    ```
 
 1. Deploy productpage and reviews services:
@@ -219,51 +229,58 @@ This cluster will import services from east and west clusters.
    ```shell
    kcent create namespace central-apps
    kcent label namespace central-apps istio-injection=enabled
-   kcent apply -f https://raw.githubusercontent.com/istio/istio/refs/heads/release-1.26/samples/bookinfo/networking/bookinfo-gateway.yaml -n central-apps
    kcent apply -l app=productpage -f https://raw.githubusercontent.com/istio/istio/refs/heads/release-1.26/samples/bookinfo/platform/kube/bookinfo.yaml -n central-apps
    kcent apply -l account=productpage -f https://raw.githubusercontent.com/istio/istio/refs/heads/release-1.26/samples/bookinfo/platform/kube/bookinfo.yaml -n central-apps
    kcent apply -l app=reviews -f https://raw.githubusercontent.com/istio/istio/refs/heads/release-1.26/samples/bookinfo/platform/kube/bookinfo.yaml -n central-apps
    kcent apply -l account=reviews -f https://raw.githubusercontent.com/istio/istio/refs/heads/release-1.26/samples/bookinfo/platform/kube/bookinfo.yaml -n central-apps
+   kcent apply -l app=details -f https://raw.githubusercontent.com/istio/istio/refs/heads/release-1.26/samples/bookinfo/platform/kube/bookinfo.yaml -n central-apps
+   kcent apply -l account=details -f https://raw.githubusercontent.com/istio/istio/refs/heads/release-1.26/samples/bookinfo/platform/kube/bookinfo.yaml -n central-apps
    ```
    ```shell
-   kcent patch gateways.networking.istio.io bookinfo-gateway -n central-apps --type='json' \
-     -p='[
-       {
-         "op": "replace",
-         "path": "/spec/servers/0/port/number",
-         "value": 80
-       }
-     ]'
+   kcent apply -f https://raw.githubusercontent.com/istio/istio/refs/heads/release-1.26/samples/bookinfo/networking/bookinfo-gateway.yaml -n central-apps
+   kcent apply -n central-apps -f - <<EOF
+   apiVersion: networking.istio.io/v1
+   kind: Gateway
+   metadata:
+      name: bookinfo-gateway
+   spec:
+     selector:
+      istio: ingressgateway
+     servers:
+     - port:
+         number: 80
+         name: http
+         protocol: HTTP
+       hosts:
+       - "*"
+   EOF
    ```
 
 1. Enable mesh federation and import remote services:
 
    ```shell
-   EAST_INGRESS_IP=$(keast get svc federation-ingress-gateway -n istio-system -o jsonpath='{.status.loadBalancer.ingress[].ip}')
-   WEST_INGRESS_IP=$(kwest get svc federation-ingress-gateway -n istio-system -o jsonpath='{.status.loadBalancer.ingress[].ip}')
+   EAST_INGRESS_IP=$(keast get svc istio-eastwestgateway -n istio-system -o jsonpath='{.status.loadBalancer.ingress[].ip}')
+   WEST_INGRESS_IP=$(kwest get svc istio-eastwestgateway -n istio-system -o jsonpath='{.status.loadBalancer.ingress[].ip}')
    cat <<EOF > central/mesh-admin-values.yaml
    global:
      defaultServicePorts:
      - number: 9080
        name: http
        protocol: HTTP
-     egressGateway:
-       enabled: true
-       selector:
-         app: istio-egressgateway
      enableGatewayAPI: true
+     gateways:
+       egress:
+         enabled: true
      remote:
      - mesh: east-mesh
        addresses:
        - $EAST_INGRESS_IP
-       port: 15443
        network: east-network
        importedServices:
        - ratings.mesh.global
      - mesh: west-mesh
        addresses:
        - $WEST_INGRESS_IP
-       port: 15443
        network: west-network
        importedServices:
        - details.mesh.global
@@ -276,6 +293,10 @@ This cluster will import services from east and west clusters.
    import:
    - hostname: ratings.mesh.global
    - hostname: details.mesh.global
+   export:
+   - hostname: details.mesh.global
+     labelSelector:
+       app: details
    EOF
    helm-cent install bookinfo-federation ../../namespace-admin -n central-apps -f central/mesh-admin-values.yaml -f central/namespace-admin-values.yaml
    ```

@@ -242,10 +242,10 @@ This cluster will import services from east and west clusters.
    apiVersion: networking.istio.io/v1
    kind: Gateway
    metadata:
-      name: bookinfo-gateway
+     name: bookinfo-gateway
    spec:
      selector:
-      istio: ingressgateway
+       istio: ingressgateway
      servers:
      - port:
          number: 80

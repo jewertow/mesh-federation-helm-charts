@@ -10,15 +10,15 @@ apiVersion: route.openshift.io/v1
 kind: Route
 metadata:
   name: export-{{ printf "%s" $export.hostname | replace "." "-" }}-{{ $port.number }}
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ $.Release.Namespace }}
 spec:
   host: {{ $host }}
   to:
     kind: Service
-    name: {{ .Values.global.gateways.ingress.serviceName | default "istio-eastwestgateway" }}
+    name: {{ $.Values.global.gateways.ingress.serviceName | default "istio-eastwestgateway" }}
     weight: 100
   port:
-    targetPort: {{ .Values.global.ingress.portName | default "tls" }}
+    targetPort: {{ $.Values.global.gateways.ingress.portName | default "tls" }}
   tls:
     termination: passthrough
   wildcardPolicy: None

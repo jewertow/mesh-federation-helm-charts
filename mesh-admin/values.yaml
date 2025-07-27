@@ -6,9 +6,13 @@ global:
   enableOpenshiftRouter: false
   gateways:
     ingress:
-      port: 15443
       selector:
         app: istio-eastwestgateway
+      port: 15443
+      # portName should be set when OpenShift Router is enabled
+      portName: tls
+      # serviceName should be set when OpenShift Router is enabled
+      serviceName: istio-eastwestgateway
     egress:
       enabled: false
       service:

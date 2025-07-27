@@ -166,7 +166,7 @@ This cluster will import services from east and west clusters.
    kcent apply -f central/istio-ingressgateway.yaml
    ```
 
-1. Deploy productpage and reviews:
+1. Deploy productpage, details and reviews:
 
    ```shell
    kcent create namespace central-apps
@@ -176,6 +176,8 @@ This cluster will import services from east and west clusters.
    kcent apply -l account=productpage -f https://raw.githubusercontent.com/istio/istio/refs/heads/release-1.26/samples/bookinfo/platform/kube/bookinfo.yaml -n central-apps
    kcent apply -l app=reviews -f https://raw.githubusercontent.com/istio/istio/refs/heads/release-1.26/samples/bookinfo/platform/kube/bookinfo.yaml -n central-apps
    kcent apply -l account=reviews -f https://raw.githubusercontent.com/istio/istio/refs/heads/release-1.26/samples/bookinfo/platform/kube/bookinfo.yaml -n central-apps
+   kcent apply -l account=details -f https://raw.githubusercontent.com/istio/istio/refs/heads/release-1.26/samples/bookinfo/platform/kube/bookinfo.yaml -n central-apps
+   kcent apply -l app=details -f https://raw.githubusercontent.com/istio/istio/refs/heads/release-1.26/samples/bookinfo/platform/kube/bookinfo.yaml -n central-apps
    kcent apply -f central/pod-monitor.yaml -n central-apps
    ```
    ```shell

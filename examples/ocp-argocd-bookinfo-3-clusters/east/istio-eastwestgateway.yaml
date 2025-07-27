@@ -19,7 +19,7 @@ spec:
         service:
           type: ClusterIP
           ports:
-          - name: tls-passthrough
+          - name: tls
             port: 15443
         env:
           ISTIO_META_REQUESTED_NETWORK_VIEW: east-network

@@ -1,0 +1,35 @@
+{{- if .Values.global.enableGatewayAPI }}
+{{- $remotes := .Values.global.remote | default list }}
+{{- range $mesh := $remotes }}
+{{- if or $mesh.addresses $.Values.global.gateways.egress.enabled }}
+---
+apiVersion: gateway.networking.k8s.io/v1beta1
+kind: Gateway
+metadata:
+  name: remote-gateway-{{ $mesh.network }}
+  namespace: {{ $.Release.Namespace }}
+  labels:
+    topology.istio.io/network: {{ $mesh.network }}
+spec:
+  gatewayClassName: istio-remote
+  addresses:
+  {{- if $.Values.global.gateways.egress.enabled }}
+  - type: Hostname
+    value: {{ $.Values.global.gateways.egress.service.name }}.{{ $.Values.global.gateways.egress.service.namespace }}.svc.cluster.local
+  {{- else }}
+  {{- range $address := $mesh.addresses }}
+  - value: {{ $address }}
+  {{- end }}
+  {{- end }}
+  listeners:
+  - name: cross-network
+    {{- $egress := $.Values.global.gateways.egress | default dict }}
+    port: {{ if $egress.enabled }}{{ or $egress.port 15443 }}{{ else }}{{ $mesh.port | default 15443 }}{{ end }}
+    protocol: TLS
+    tls:
+      mode: Passthrough
+      options:
+        gateway.istio.io/listener-protocol: auto-passthrough
+{{- end }}
+{{- end }}
+{{- end }}

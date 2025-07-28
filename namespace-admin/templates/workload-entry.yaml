@@ -1,0 +1,60 @@
+{{/* Build maps of all hostnames for processing */}}
+{{- $allHostnames := dict }}
+{{- $exportMap := dict }}
+{{- $importMap := dict }}
+
+{{/* Build export map */}}
+{{- range $export := .Values.export }}
+{{- $_ := set $exportMap $export.hostname $export }}
+{{- $_ := set $allHostnames $export.hostname true }}
+{{- end }}
+
+{{/* Build import map */}}
+{{- range $import := .Values.import }}
+{{- $_ := set $importMap $import.hostname $import }}
+{{- $_ := set $allHostnames $import.hostname true }}
+{{- end }}
+
+{{/* Create WorkloadEntries for imported services */}}
+{{- range $hostname, $_ := $allHostnames }}
+{{- $export := index $exportMap $hostname }}
+{{- $import := index $importMap $hostname }}
+{{- $ports := dict }}
+{{- if $export }}
+{{- $ports = $export.ports | default $.Values.global.defaultServicePorts }}
+{{- else }}
+{{- $ports = $import.ports | default $.Values.global.defaultServicePorts }}
+{{- end }}
+{{- if $import }}
+{{- range $mesh := $.Values.global.remote }}
+{{- if has $hostname $mesh.importedServices }}
+{{- range $addrIdx, $addr := $mesh.addresses }}
+apiVersion: networking.istio.io/v1
+kind: WorkloadEntry
+metadata:
+  name: {{ printf "%s-%s-%d" ($hostname | replace "." "-" | trunc 230) ($mesh.network | replace "." "-" | trunc 10) $addrIdx }}
+  namespace: {{ $.Release.Namespace }}
+  labels:
+    {{- if $export }}
+    {{- with $export.labelSelector }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+    {{- else }}
+    hostname: {{ $hostname | replace "." "-" }}
+    {{- end }}
+    security.istio.io/tlsMode: istio
+    topology.istio.io/cluster: {{ $mesh.mesh }}
+spec:
+  network: {{ $mesh.network }}
+  {{- if not $.Values.global.enableGatewayAPI }}
+  address: {{ $addr }}
+  {{- end }}
+  {{- if $mesh.locality }}
+  locality: {{ $mesh.locality }}
+  {{- end }}
+---
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}

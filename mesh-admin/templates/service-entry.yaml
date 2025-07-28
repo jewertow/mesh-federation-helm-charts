@@ -1,30 +1,35 @@
-{{- if .Values.global.egressGateway.enabled }}
+{{- if .Values.global.gateways.egress.enabled }}
 {{- $remotes := .Values.global.remote | default list }}
 {{- if gt (len $remotes) 0 }}
 {{- range $meshIdx, $mesh := $remotes }}
+{{- $firstAddr := index $mesh.addresses 0 }}
+{{- $isIPAddress := regexMatch "^[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}$" $firstAddr }}
 apiVersion: networking.istio.io/v1beta1
 kind: ServiceEntry
 metadata:
   name: ingress-{{ $mesh.mesh }}
-  namespace: {{ $.Values.global.configNamespace }}
+  namespace: {{ $.Release.Namespace }}
 spec:
   exportTo:
   - "."
   hosts:
   - ingress.{{ $mesh.mesh }}.global
   ports:
-  - number: {{ $mesh.port }}
+  - number: {{ $mesh.port | default 15443 }}
     name: auto-passthrough-tls
     protocol: TLS
-  {{/* TODO: resolution should depend on the address format - DNS for hostnames and STATIC for IP addresses */}}
+  {{- if $isIPAddress }}
+  resolution: STATIC
+  {{- else }}
   resolution: DNS
+  {{- end }}
   location: MESH_INTERNAL
   endpoints:
   {{- range $addr := $mesh.addresses }}
   - address: {{ $addr }}
-    ports:
-      auto-passthrough-tls: {{ $mesh.port }}
+    {{- if not $.Values.global.enableGatewayAPI }}
     network: {{ $mesh.network }}
+    {{- end }}
     {{- if $mesh.locality }}
     locality: {{ $mesh.locality }}
     {{- end }}

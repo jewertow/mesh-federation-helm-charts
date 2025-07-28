@@ -1,0 +1,12 @@
+global:
+  defaultServicePorts:
+  - number: 9080
+    name: http
+    protocol: HTTP
+  enableGatewayAPI: true
+  remote:
+  - mesh: west-mesh
+    addresses: []
+    network: west-network
+    importedServices:
+    - httpbin.mesh.global

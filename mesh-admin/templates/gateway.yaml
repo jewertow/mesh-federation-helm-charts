@@ -1,12 +1,13 @@
-{{- $selector := .Values.global.gatewaySelector | default (dict "app" "federation-ingress-gateway") }}
-{{- $port := .Values.global.port | default 15443 }}
+{{- $ingress := .Values.global.gateways.ingress | default dict }}
+{{- $selector := $ingress.selector | default (dict "app" "istio-eastwestgateway") }}
+{{- $port := $ingress.port | default 15443 }}
 {{- $local := get .Values.global "local" | default dict }}
 {{- $exports := get $local "export" | default list }}
 {{- if gt (len $exports) 0 }}
 apiVersion: networking.istio.io/v1beta1
 kind: Gateway
 metadata:
-  name: federation-ingress-gateway
+  name: cross-network-gateway
   namespace: {{ .Release.Namespace }}
 spec:
   selector:
@@ -27,7 +28,7 @@ spec:
 {{- end }}
 
 {{/* Egress Gateway for importing services from remote meshes */}}
-{{- if .Values.global.egressGateway.enabled }}
+{{- if .Values.global.gateways.egress.enabled }}
 {{- $remotes := .Values.global.remote | default list }}
 {{- if gt (len $remotes) 0 }}
 
@@ -43,16 +44,17 @@ spec:
 apiVersion: networking.istio.io/v1beta1
 kind: Gateway
 metadata:
-  name: federation-egress-gateway
-  namespace: {{ .Values.global.configNamespace }}
+  name: cross-network-egress-gateway
+  namespace: {{ .Release.Namespace }}
 spec:
   selector:
-    {{- range $k, $v := .Values.global.egressGateway.selector }}
+    {{- $egressSelector := .Values.global.gateways.egress.selector | default (dict "app" "istio-egressgateway") }}
+    {{- range $k, $v := $egressSelector }}
     {{ $k }}: {{ $v }}
     {{- end }}
   servers:
   - port:
-      number: {{ .Values.global.egressGateway.port }}
+      number: {{ .Values.global.gateways.egress.port | default 15443 }}
       name: tls
       protocol: TLS
     hosts:

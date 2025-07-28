@@ -1,4 +1,4 @@
-{{- if .Values.global.useOpenshiftRouter }}
+{{- if .Values.global.enableOpenshiftRouter }}
 {{- $local := get .Values.global "local" | default dict }}
 {{- $exports := get $local "export" | default list }}
 {{- range $export := $exports }}
@@ -10,15 +10,15 @@ apiVersion: route.openshift.io/v1
 kind: Route
 metadata:
   name: export-{{ printf "%s" $export.hostname | replace "." "-" }}-{{ $port.number }}
-  namespace: istio-system
+  namespace: {{ $.Release.Namespace }}
 spec:
   host: {{ $host }}
   to:
     kind: Service
-    name: federation-ingress-gateway
+    name: {{ $.Values.global.gateways.ingress.serviceName | default "istio-eastwestgateway" }}
     weight: 100
   port:
-    targetPort: tls-passthrough
+    targetPort: {{ $.Values.global.gateways.ingress.portName | default "tls" }}
   tls:
     termination: passthrough
   wildcardPolicy: None

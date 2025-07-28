@@ -1,0 +1,24 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: mesh-federation
+  namespace: openshift-gitops
+spec:
+  destination:
+    namespace: istio-system
+    server: https://kubernetes.default.svc
+  project: default
+  sources:
+  - repoURL: https://github.com/jewertow/mesh-federation-helm-charts
+    path: mesh-admin
+    targetRevision: istio-remote-gateway
+    helm:
+      valueFiles:
+      - $mesh-admin/values.yaml
+  - repoURL: https://github.com/jewertow/mesh-federation-argo-mesh-admin
+    targetRevision: east-cluster
+    ref: mesh-admin
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

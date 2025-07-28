@@ -1,4 +1,4 @@
-{{- if .Values.global.useOpenshiftRouter }}
+{{- if .Values.global.enableOpenshiftRouter }}
 {{- $local := get .Values.global "local" | default dict }}
 {{- $exports := get $local "export" | default list }}
 {{- range $export := $exports }}
@@ -10,11 +10,13 @@ apiVersion: networking.istio.io/v1alpha3
 kind: EnvoyFilter
 metadata:
   name: export-{{ printf "%s" $export.hostname | replace "." "-" }}-{{ $port.number }}
-  namespace: istio-system
+  namespace: {{ $.Release.Namespace }}
 spec:
   workloadSelector:
     labels:
-      app: federation-ingress-gateway
+      {{- range $k, $v := $.Values.global.gateways.ingress.selector }}
+      {{ $k }}: {{ $v }}
+      {{- end }}
   configPatches:
   - applyTo: FILTER_CHAIN
     match:

@@ -1,0 +1,5 @@
+service:
+  type: ClusterIP
+  ports:
+  - name: cross-network-tls
+    port: 15443
